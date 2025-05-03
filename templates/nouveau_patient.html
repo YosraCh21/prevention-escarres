@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Nouveau Patient</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .form-section {
+            margin-bottom: 30px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-left: 4px solid green;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <h1>Créer un Nouveau Patient</h1>
+
+    <div class="form-section">
+        <form method="POST" action="/nouveau_patient">
+            <label>Nom :</label><br>
+            <input type="text" name="nom" required><br><br>
+
+            <label>Âge :</label><br>
+            <input type="number" name="age" required><br><br>
+
+            <label>Chambre :</label><br>
+            <input type="text" name="chambre" required><br><br>
+
+            <label>Lit :</label><br>
+            <input type="text" name="lit" required><br><br>
+
+            <button type="submit">Créer Fiche Patient</button>
+        </form>
+    </div>
+
+{% if patient %}
+    <p><strong>Nom :</strong> {{ patient.nom }}</p>
+    <p><strong>Âge :</strong> {{ patient.age }}</p>
+    <p><strong>Chambre :</strong> {{ patient.chambre }}</p>
+    <p><strong>Lit :</strong> {{ patient.lit }}</p>
+
+    <div class="form-section">
+        <h3>Reconnaissance d'Escarre</h3>
+        <form action="/reconnaissance_image/{{ patient.id }}" method="POST" enctype="multipart/form-data">
+            <input type="file" name="image" accept="image/*" required><br><br>
+            <button type="submit">Analyser Image</button>
+        </form>
+
+        {% if patient.resultat %}
+            <p><strong>{{ patient.resultat }}</strong></p>
+            {% if patient.image_path %}
+                <img src="{{ patient.image_path }}" width="300px">
+            {% endif %}
+        {% endif %}
+ </div>
+
+    <div class="form-section">
+    <h3>Score Waterlow</h3>
+        <a href="{{ url_for('waterlow_score', patient_id=patient.id) }}">
+            <button>Accéder au Score Waterlow</button>
+        </a>
+    </div>
+
+{% endif %}
+</body>
+</html>

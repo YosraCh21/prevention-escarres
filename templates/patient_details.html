@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détails du patient</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Détails de {{ patient.nom }}</h1>
+
+    <p><strong>Nom :</strong> {{ patient.nom }}</p>
+    <p><strong>Âge :</strong> {{ patient.age }} ans</p>
+    <p><strong>Chambre :</strong> {{ patient.chambre }}</p>
+    <p><strong>Lit :</strong> {{ patient.lit }}</p>
+
+    {% if analyses %}
+        <h3>Analyses précédentes :</h3>
+        <ul>
+            {% for analyse in analyses %}
+                <li>
+                    Score : {{ analyse.score_waterlow }} |
+                    Résultat : {{ analyse.resultat }} |
+                    Date : {{ analyse.timestamp_adjusted.strftime('%d/%m/%Y %H:%M') }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Aucune analyse enregistrée.</p>
+    {% endif %}
+
+    {% if patient.score_waterlow %}
+    <input type="hidden" name="score_waterlow" value="{{ patient.score_waterlow }}">
+    {% endif %}
+
+    <a href="{{ url_for('nouvelle_analyse', patient_id=patient.id) }}" class="btn btn-primary">Nouvelle Analyse</a>
+    <a href="{{ url_for('index') }}">Retour à l'accueil</a>
+
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Bienvenue!</h1>
+        <p>Vous êtes connecté.</p>
+
+        <a href="{{ url_for('nouveau_patient') }}">
+            <button type="button">+ Nouveau patient</button>
+        </a>
+
+        <h2>Liste des patients</h2>
+
+        <div class="patient-list">
+            {% for patient in patients %}
+                <p>{{ patient.nom }} {{ patient.prenom }}</p>
+            {% endfor %}
+        </div>
+        
+        <ul>
+            {% for patient in patients %}
+            <li>
+                <a href="{{ url_for('patient_details', patient_id=patient.id) }}">{{ patient.nom }}</a> - {{ patient.age }} ans
+                <form method="POST" action="{{ url_for('delete_patient', patient_id=patient.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-danger" style="background-color: red; color: white; padding: 5px 10px; border: none; border-radius: 5px;">Supprimer</button>
+                </form>
+            </li>
+            {% else %}
+            <li>Aucun patient enregistré.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div style="position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);">
+        <a href="/logout" style="background-color: red; color: white; padding: 10px; text-decoration: none; border-radius: 5px;">
+            Se déconnecter
+        </a>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+</body>
+</html>

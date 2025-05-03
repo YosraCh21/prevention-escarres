@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calcul du Score Waterlow</title>
+    <!-- Appel correct du CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Calcul du Score Waterlow</h1>
+
+        <form id="waterlowForm" method="POST" action="{{ url_for('waterlow_score', patient_id=patient.id) }}">
+            <!-- Première colonne : Données Démographiques -->
+            <div class="column">
+                <h3>Données Démographiques</h3>
+
+                <label for="corpulence">Corpulence</label>
+                <select id="corpulence" name="corpulence">
+                    <option value="0">Moyenne (0)</option>
+                    <option value="1">Au-dessus de la moyenne (1)</option>
+                    <option value="2">Obèse (2)</option>
+                    <option value="3">En dessous de la moyenne (3)</option>
+                </select>
+
+                <label for="type_peau">Type de Peau</label>
+                <select id="type_peau" name="type_peau">
+                    <option value="0">Saine (0)</option>
+                    <option value="1">Fine (1)</option>
+                    <option value="1">Sèche (1)</option>
+                    <option value="1">Œdémateuse (1)</option>
+                    <option value="1">Moite/Fièvre (1)</option>
+                    <option value="2">Décolorée Grade 1 (2)</option>
+                    <option value="3">Lésée/Plaie Grade 2-4 (3)</option>
+                </select>
+
+                <label for="age">Âge</label>
+                <select id="age" name="age">
+                    <option value="1">14-49 (1)</option>
+                    <option value="2">50-64 (2)</option>
+                    <option value="3">65-74 (3)</option>
+                    <option value="4">75-80 (4)</option>
+                    <option value="5">>80 (5)</option>
+                </select>
+            </div>
+            <!-- Deuxième colonne : Facteurs de Risque -->
+            <div class="column">
+                <h3>Facteurs de Risque</h3>
+
+                <label for="continence">Continence</label>
+                <select id="continence" name="continence">
+                    <option value="0">Complète/Sondé (0)</option>
+                    <option value="1">Occasionnellement incontinente (1)</option>
+                    <option value="2">Incontinence urinaire (2)</option>
+                    <option value="3">Double incontinence (3)</option>
+                </select>
+
+                <label for="mobilite">Mobilité</label>
+                <select id="mobilite" name="mobilite">
+                    <option value="0">Totalement mobile (0)</option>
+                    <option value="1">Agité/Nerveux (1)</option>
+                    <option value="2">Apathique (2)</option>
+                    <option value="3">Restreint (3)</option>
+                    <option value="4">Alité/Traction (4)</option>
+                    <option value="5">Confiné au fauteuil (5)</option>
+                </select>
+
+                <label for="appetit">Appétit</label>
+                <select id="appetit" name="appetit">
+                    <option value="0">Normal (0)</option>
+                    <option value="1">Faible (1)</option>
+                    <option value="2">Sonde NG/Liquides uniquement (2)</option>
+                    <option value="3">NPO/Anorexique (3)</option>
+                </select>
+            </div>
+
+            <!-- Troisième colonne : Facteurs Spéciaux -->
+            <div class="column">
+                <h3>Facteurs Spéciaux</h3>
+
+                <fieldset>
+                    <legend>Malnutrition Tissulaire</legend>
+                    <label><input type="checkbox" name="malnutrition" value="8"> Cachexie terminale (8)</label><br>
+                    <label><input type="checkbox" name="malnutrition" value="8"> Défaillance multi-organes (8)</label><br>
+                    <label><input type="checkbox" name="malnutrition" value="5"> Défaillance d'un organe (5)</label><br>
+                    <label><input type="checkbox" name="malnutrition" value="5"> Maladie vasculaire périphérique (5)</label><br>
+                    <label><input type="checkbox" name="malnutrition" value="2"> Anémie (2)</label><br>
+                    <label><input type="checkbox" name="malnutrition" value="1"> Tabagisme (1)</label><br>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Déficit Neurologique</legend>
+                    <label><input type="checkbox" name="deficit_neuro" value="4"> Diabète/SEP/AVC (4-6)</label><br>
+                    <label><input type="checkbox" name="deficit_neuro" value="4"> Paralysie motrice/sensorielle (4-6)</label><br>
+                </fieldset>
+
+                <label for="chirurgie">Chirurgie</label>
+                <select id="chirurgie" name="chirurgie">
+                    <option value="0">Aucun (0)</option>
+                    <option value="5">Orthopédique/Rachis (5)</option>
+                    <option value="5">Sur table >2 hrs (5)</option>
+                </select>
+
+                <fieldset>
+                    <legend>Médicaments</legend>
+                    <label><input type="checkbox" name="medication" value="4"> Stéroïdes (4)</label><br>
+                    <label><input type="checkbox" name="medication" value="4"> Cytotoxiques (4)</label><br>
+                    <label><input type="checkbox" name="medication" value="4"> Anti-inflammatoires (4)</label><br>
+                </fieldset>
+            </div>
+
+            <div class="notification-section">
+                <label for="notifications">Recevoir des notifications:</label>
+                <input type="checkbox" id="notifications" name="notifications"
+                    {% if patient.notifications_enabled %}checked{% endif %}>
+            </div>
+
+            <button type="submit">Enregistrer le score</button>
+        </form>
+        <div>
+            <h2>Score Waterlow</h2>
+            {% if patient.score_waterlow is not none %}
+                <p class="score">Score Waterlow : <strong>{{ patient.score_waterlow }}</strong></p>
+            {% endif %}
+        </div>
+
+        <div id="recommendation-section">
+            <h3>Recommandations :</h3>
+            <ul id="recommandations">
+                {% for reco in recommendations %}
+                    <li>{{ reco }}</li>
+                {% endfor %}
+            </ul>
+        </div>        
+        <a href="{{ url_for('fiche_patient', patient_id=patient.id) }}">Retour à la fiche patient</a>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+</body>
+</html>

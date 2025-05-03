@@ -1,0 +1,8 @@
+mon_env_tf28/
+uploads/
+datasets/
+__pycache__/
+*.h5
+*.pyc
+.DS_Store
+.env

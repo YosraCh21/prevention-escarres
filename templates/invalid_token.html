@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lien invalide</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 500px; 
+               margin: 0 auto; padding: 20px; text-align: center; }
+        .error { color: red; margin: 20px 0; font-size: 1.2em; }
+        a { color: #4CAF50; }
+    </style>
+</head>
+<body>
+    <div class="error">Lien invalide ou expiré</div>
+    <p><a href="{{ url_for('reset_password_request') }}">Demander un nouveau lien</a></p>
+</body>
+</html>

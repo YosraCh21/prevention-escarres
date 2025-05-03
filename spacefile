@@ -1,0 +1,2 @@
+[dev]
+  command = "python app.py"

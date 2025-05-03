@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiche Patient</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Fiche du Patient</h1>
+    <p><strong>Nom :</strong> {{ patient.nom }}</p>
+    <p><strong>Âge :</strong> {{ patient.age }}</p>
+    <p><strong>Chambre :</strong> {{ patient.chambre }}</p>
+    <p><strong>Lit :</strong> {{ patient.lit }}</p>
+
+    <a href="{{ url_for('waterlow_score', patient_id=patient.id) }}">
+        <button>Calculer Score Waterlow</button>
+    </a>
+
+    <br><br>
+    <a href="{{ url_for('index') }}">Retour à l'accueil</a>
+    <h2>Reconnaissance d'Image</h2>
+    <form method="POST" action="{{ url_for('reconnaissance_image', patient_id=patient.id) }}" enctype="multipart/form-data">        <label for="image">Choisir une image :</label>
+        <input type="file" id="image" name="image" accept="image/*" required>
+        <button type="submit">Analyser</button>
+    </form>
+    {% if resultat %}
+        <div>
+            <h4>Résultat :</h4>
+            <p>{{ resultat }}</p>
+            {% if image_filename %}
+                <img src="{{ url_for('static', filename='uploads/' + image_filename) }}"
+                     alt="Image analysée"
+                     width="300">
+            {% endif %}
+        </div>
+    {% endif %}
+
+</body>
+</html>
