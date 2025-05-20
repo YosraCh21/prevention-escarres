@@ -1,6 +1,7 @@
 from extensions import db
 from datetime import datetime
 from itsdangerous import URLSafeTimedSerializer
+import pytz
 
 class Patient(db.Model):
     __tablename__ = 'patients'
@@ -56,3 +57,9 @@ class Analyse(db.Model):
     resultat = db.Column(db.String(200), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     patient = db.relationship('Patient', back_populates='analyses')
+    @property
+    def timestamp_adjusted(self):
+        """Convertit le timestamp UTC en heure locale"""
+        utc_time = self.timestamp.replace(tzinfo=pytz.utc)
+        local_time = utc_time.astimezone(pytz.timezone('Europe/Paris'))  
+        return local_time

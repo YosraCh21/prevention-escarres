@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calcul du Score Waterlow</title>
-    <!-- Appel correct du CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -12,7 +11,6 @@
         <h1>Calcul du Score Waterlow</h1>
 
         <form id="waterlowForm" method="POST" action="{{ url_for('waterlow_score', patient_id=patient.id) }}">
-            <!-- Première colonne : Données Démographiques -->
             <div class="column">
                 <h3>Données Démographiques</h3>
 
@@ -44,7 +42,6 @@
                     <option value="5">>80 (5)</option>
                 </select>
             </div>
-            <!-- Deuxième colonne : Facteurs de Risque -->
             <div class="column">
                 <h3>Facteurs de Risque</h3>
 
@@ -75,7 +72,6 @@
                 </select>
             </div>
 
-            <!-- Troisième colonne : Facteurs Spéciaux -->
             <div class="column">
                 <h3>Facteurs Spéciaux</h3>
 

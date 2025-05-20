@@ -14,7 +14,8 @@ import os
 from threading import Timer
 import smtplib
 from email.message import EmailMessage
-from werkzeug.security import generate_password_hash
+from itsdangerous import URLSafeTimedSerializer
+
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -27,16 +28,17 @@ from keras.preprocessing import image
 import numpy as np
 
 app = Flask(__name__)
+
 app.secret_key = os.getenv('SECRET_KEY')
 
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_DEBUG'] = True 
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
-app.config['MAIL_RESET_PASSWORD_SUBJECT'] = "Réinitialisation de votre mot de passe"
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME') 
+app.config['MAIL_RESET_PASSWORD_SUBJECT'] = "Réinitialisation de votre mot de passe"
 mail = Mail(app)
 
 UPLOAD_FOLDER = 'uploads'
@@ -46,6 +48,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///patients.db'
 app.config['UPLOAD_FOLDER'] = 'C:/Users/DELL/Desktop/MonProjet/static/uploads'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = True
+
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 TRESHOLD = 10
 
 if not os.path.exists(UPLOAD_FOLDER):
@@ -131,22 +136,14 @@ parametres = {
         ]
     }
 }
-@app.route('/get_time')
-def get_time():
-    utc_time = datetime.utcnow()
-    manual_correction = utc_time + timedelta(hours=1)
-    return jsonify({
-        "time": manual_correction.isoformat(),
-        "info": "UTC+1 (correction manuelle)"
-    })
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        name = request.form['name'].strip().capitalize() 
+        name = request.form['name'].strip().capitalize()
         email = request.form['email'].strip().lower()
         password = request.form['password'].strip()
-
+        
         if not all([name, email, password]):
             return render_template('login.html', 
                                error="Tous les champs sont obligatoires")
@@ -154,35 +151,38 @@ def login():
         if len(password) < 8:
             return render_template('login.html',
                                error="Le mot de passe doit contenir au moins 8 caractères")
-        
+
         user = User.query.filter_by(email=email).first()
 
         if user:
-            if check_password_hash(user.password, password):
+            if check_password_hash(user.password, password):  
                 session['user_id'] = user.id
-                session['name'] = user.name  
-                session['email'] = email 
+                session['name'] = user.name
+                session['email']   = user.email
                 return redirect(url_for('home'))
             else:
                 return render_template('login.html', 
-                               error="Mot de passe incorrect")
-    
+                                   error="Mot de passe incorrect")
         else:
             hashed_pw = generate_password_hash(
                 password,
                 method='pbkdf2:sha256',
                 salt_length=16
             )
-            new_user = User(name=name, email=email, password=password)
+            new_user = User(
+                name=name,
+                email=email,
+                password=hashed_pw  
+            )
             db.session.add(new_user)
             db.session.commit()
+            
             send_welcome_email(new_user)
-
+            
             session['user_id'] = new_user.id
-            session['email'] = email  
             session['name'] = name
-
-            return redirect(url_for('index'))
+            session['email'] = new_user.email
+            return redirect(url_for('account_created'))  
 
     return render_template('login.html')
 
@@ -235,7 +235,7 @@ def register():
     db.session.commit()
     
     return redirect(url_for('login', success="Compte créé avec succès"))
-
+    
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     user = User.verify_reset_token(token)
@@ -279,17 +279,22 @@ def send_password_reset_email(user, token):
         msg = Message(
             subject=app.config['MAIL_RESET_PASSWORD_SUBJECT'],
             recipients=[user.email],
-            sender=app.config['MAIL_DEFAULT_SENDER'],
-            body=f"""Pour réinitialiser votre mot de passe, cliquez sur ce lien :
+            body=f"""Pour réinitialiser votre mot de passe :
 {url_for('reset_password', token=token, _external=True)}
 
-Ce lien expirera dans 30 minutes.
-"""
+Lien valable 30 minutes"""
         )
-        mail.send(msg)
+        
+        with app.app_context():
+            mail.send(msg)
+            
+    except smtplib.SMTPAuthenticationError:
+        app.logger.error("Erreur d'authentification SMTP")
+        return False
     except Exception as e:
-        app.logger.error(f"Erreur d'envoi d'email: {str(e)}")
-        raise
+        app.logger.error(f"Erreur SMTP: {str(e)}")
+        return False
+    return True
 
 @app.route('/home')
 def home():
@@ -335,12 +340,12 @@ def nouveau_patient():
             
             if not all([nom, age, chambre, lit]):
                 return render_template('nouveau_patient.html', 
-                                    error="Tous les champs sont obligatoires",
-                                    form_data=request.form)
+                                       error="Tous les champs sont obligatoires",
+                                       form_data=request.form)
             if not age.isdigit() or int(age) <= 0:
                 return render_template('nouveau_patient.html',
-                                    error="L'âge doit être un nombre positif",
-                                    form_data=request.form)
+                                       error="L'âge doit être un nombre positif",
+                                       form_data=request.form)
 
             user_id = session.get('user_id')
             patient = Patient(
@@ -355,19 +360,38 @@ def nouveau_patient():
             return redirect(url_for('fiche_patient', patient_id=patient.id))
         except Exception as e:
             return render_template('nouveau_patient.html',
-                                error="Une erreur technique est survenue",
-                                form_data=request.form)
+                                   error="Une erreur technique est survenue",
+                                   form_data=request.form)
 
     return render_template('nouveau_patient.html', patient=None)
 
+from datetime import timedelta
+
 @app.route('/patient_details/<int:patient_id>')
 def patient_details(patient_id):
-    patient = Patient.query.get_or_404(patient_id)
-    for analyse in patient.analyses:
-        analyse.timestamp_adjusted = analyse.timestamp + timedelta(hours=1)
-    analyses = Analyse.query.filter_by(patient_id=patient_id).order_by(Analyse.timestamp.desc()).all()
+    try:
+        patient = Patient.query.get_or_404(patient_id)
+        analyses = Analyse.query.filter_by(patient_id=patient_id).order_by(Analyse.timestamp.desc()).all()
 
-    return render_template('patient_details.html', patient=patient, analyses=analyses)
+        return render_template('patient_details.html', patient=patient, analyses=analyses, timedelta=timedelta)
+    except Exception as e:
+        app.logger.exception("Erreur dans patient_details")
+        return "Erreur interne du serveur", 500
+ 
+@app.route('/delete_patient/<int:patient_id>', methods=['POST'])
+def delete_patient(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    Analyse.query.filter_by(patient_id=patient_id).delete()
+    
+    db.session.delete(patient)
+    db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/fiche_patient/<int:patient_id>')
+def fiche_patient(patient_id):
+    patient = Patient.query.get_or_404(patient_id)
+    analyses = Analyse.query.filter_by(patient_id=patient_id).order_by(Analyse.timestamp.desc()).all()
+    return render_template('fiche_patient.html', patient=patient, analyses=analyses)
 
 def predict_image(image_path): 
     """Prédit le stade d'une escarre à partir d'une image"""
@@ -381,7 +405,7 @@ def predict_image(image_path):
 
     stades = ["Stade 1", "Stade 2", "Stade 3", "Stade 4"]
     
-    if confidence < 60:  
+    if confidence < 40:  
         return None, confidence  
     else:
         return stades[class_index], confidence  
@@ -421,22 +445,6 @@ def nouvelle_analyse(patient_id):
         return redirect(url_for('patient_details', patient_id=patient.id))
 
     return render_template('fiche_patient.html', patient=patient)
-
-
-@app.route('/delete_patient/<int:patient_id>', methods=['POST'])
-def delete_patient(patient_id):
-    patient = Patient.query.get_or_404(patient_id)
-    Analyse.query.filter_by(patient_id=patient_id).delete()
-    
-    db.session.delete(patient)
-    db.session.commit()
-    return redirect(url_for('index'))
-
-@app.route('/fiche_patient/<int:patient_id>')
-def fiche_patient(patient_id):
-    patient = Patient.query.get_or_404(patient_id)
-    analyses = Analyse.query.filter_by(patient_id=patient_id).order_by(Analyse.timestamp.desc()).all()
-    return render_template('fiche_patient.html', patient=patient, analyses=analyses)
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
@@ -543,8 +551,8 @@ def check_waterlow_score_and_notify(patient):
     if patient.score_waterlow >= 15 and patient.notifications_enabled:
         email = session.get('email')
         if email:
-            Timer(7200.0, send_email_directly, args=[email, patient.nom, patient.score_waterlow]).start()
-            print(f"⏳ Notification programmée pour {patient.nom} (dans 2 heures)")
+            Timer(60.0, send_email_directly, args=[email, patient.nom, patient.score_waterlow]).start()
+            print(f"⏳ Notification programmée pour {patient.nom} (dans 60s)")
 
 def send_email_directly(to_email, patient_name, score):
     try:
@@ -568,36 +576,7 @@ def send_email_directly(to_email, patient_name, score):
         print(f"✅ Email envoyé à {to_email}")
     except Exception as e:
         print(f"❌ Erreur SMTP: {str(e)}")
-
-def send_delayed_notification(self, email, patient_nom, score_waterlow):
-    try:
-        if not email:
-            raise ValueError("Email recipient not provided")
-
-        msg = Message(
-            "Alerte - Risque élevé d'escarres",
-            recipients=[email],
-            body=f"""
-            ALERTE WATERLOW CRITIQUE
-            -----------------------
-            Patient: {patient_nom}
-            Score: {score_waterlow}
-            Date: {datetime.now().strftime('%d/%m/%Y %H:%M')}
-            
-            Action requise: Intervention immédiate recommandée.
-            """
-        )
         
-        with app.app_context():
-            mail.send(msg)
-            
-        print(f"Notification envoyée à {email}")
-        return True
-        
-    except Exception as exc:
-        print(f"Échec d'envoi (tentative {self.request.retries}/{self.max_retries}): {exc}")
-        self.retry(exc=exc)
-
 WATERLOW_PARAMS = [
     'corpulence', 'type_peau', 'age', 'continence', 
     'mobilite', 'appetit', 'malnutrition', 
@@ -675,6 +654,4 @@ def waterlow_score(patient_id):
                            notifications_enabled=patient.notifications_enabled)
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
+    app.run()
